@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<style>
+.graticule {
+  fill: none;
+  stroke: #777;
+  stroke-width: 0.5px;
+  stroke-opacity: 0.5;
+}
+
+.trash-icon:hover {
+    fill: red;
+}
+
+.land {
+  fill: #222;
+}
+
+.links line {
+  stroke: black;
+  stroke-opacity: 0.8;
+}
+
+.boundary {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.5px;
+}
+
+.legend-box {
+  stroke-width: 2;
+  stroke: #006BB6;
+  fill: none;
+}
+
+.legend-node {
+  fill: #006BB6
+}
+
+.nodes {
+  fill: #006BB6
+}
+</style>
+<body>
+<script src='//d3js.org/d3.v4.0.0-alpha.50.min.js'></script>
+<script src='//d3js.org/topojson.v1.min.js'></script>
+<script src='network-latency.js'></script>
+<script src='draw-nodes.js'></script>
