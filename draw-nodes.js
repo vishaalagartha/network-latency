@@ -1,5 +1,14 @@
 const radius = 10
 
+const computeWidth = function(x1, y1, x2, y2) {
+  const strokeScale = d3.scaleLinear()
+                        .domain([0, Math.sqrt(960*960+600*600)])
+                        .range([10, 0])
+
+  const d = Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+  return strokeScale(d)
+}
+
 const drawNodes = function(svg) {
   const linksGroup = svg.append('g')
     .attr('class', 'links')
@@ -31,7 +40,8 @@ const drawNodes = function(svg) {
               .attr('x1', function(d) { return d.x1 })
               .attr('y1', function(d) { return d.y1 })
               .attr('x2', function(d) { return d.x2 })
-              .attr('y2', function(d) { return d.y2 });
+              .attr('y2', function(d) { return d.y2 })
+              .attr('stroke-width', function(d) { return computeWidth(d.x1, d.y1, d.x2, d.y2) })
 
     const newNodes = nodesGroup.selectAll('circle')
               .data(nodes)
@@ -94,7 +104,18 @@ const drawNodes = function(svg) {
     update()
   }
 
+
   function drawLegend() {
+    function expandTrash() {
+      d3.select(this)
+        .attr('width', 60)
+        .attr('height', 60)
+    }
+    function shrinkTrash() {
+      d3.select(this)
+        .attr('width', 50)
+        .attr('height', 50)
+    }
     legend.append('svg:image')
       .attr('x', 75)
       .attr('y', 100)
@@ -102,6 +123,8 @@ const drawNodes = function(svg) {
       .attr('height', 50)
       .attr('width', 50)
       .attr('class', 'trash-icon')
+      .on('mouseover', expandTrash)
+      .on('mouseout', shrinkTrash)
 
     legend.append('rect')
       .attr('class', 'legend-box')

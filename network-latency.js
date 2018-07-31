@@ -1,10 +1,10 @@
 const buildMap = function() {
-  const width = 1260,
-        height = 630;
+  const width = 960,
+        height = 600;
 
   const projection = d3.geoMercator()
                        .scale(130)
-                       .translate( [width / 2.5, height / 1.5] );
+                       .translate( [width / 2, height / 1.5] );
 
   const path = d3.geoPath()
         .projection(projection);
