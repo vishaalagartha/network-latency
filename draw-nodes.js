@@ -1,10 +1,10 @@
 const radius = 10
 
 const drawNodes = function(svg) {
-  const nodesGroup = svg.append('g')
-    .attr('class', 'nodes')
   const linksGroup = svg.append('g')
     .attr('class', 'links')
+  const nodesGroup = svg.append('g')
+    .attr('class', 'nodes')
 
   const legend = svg.append('g')
   
