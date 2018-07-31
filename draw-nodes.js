@@ -18,62 +18,81 @@ const drawNodes = function(svg) {
             .data(links)
 
   drawLegend(svg)
-  function dragged(d) {
 
-    const isTrashingNode = d3.event.x > 75 && d3.event.x < 75+50 && d3.event.y > 100 && d3.event.y < 100+50
 
-    const newNode = d3.select(this)
-      .attr('cx', d3.event.x)
-      .attr('cy', d3.event.y)
+  var update = function() {
+    const newLinks = linksGroup.selectAll('line')
+              .data(links)
 
-    d3.selectAll('line')
-      .each(function(d) {
-        const line = d3.select(this)
-        line.attr('x1', function(d) {return d3.event.x}).attr('y1', function(d) {return d3.event.y})
-      })
+    newLinks.exit().remove()
+
+    newLinks.enter().append('line')
+            .merge(newLinks)
+              .attr('x1', function(d) { return d.x1 })
+              .attr('y1', function(d) { return d.y1 })
+              .attr('x2', function(d) { return d.x2 })
+              .attr('y2', function(d) { return d.y2 });
+
+    const newNodes = nodesGroup.selectAll('circle')
+              .data(nodes)
+
+    newNodes.exit().remove()
+
+    newNodes.enter().append('circle')
+            .merge(newNodes)
+              .attr('cx', function(d) { return d.x })
+              .attr('cy', function(d) { return d.y });
 
   }
 
-  function dragended(d) {
-    d3.select(this).remove()
+  function dragNode(id) {
+    index = nodes.findIndex(n => n.id===id)
+    nodes[index] = {id: id, x: d3.event.x, y: d3.event.y}
 
+    links.forEach(function(link) {
+      if(link.id[0]===id.toString()){
+        link.x1 = d3.event.x
+        link.y1 = d3.event.y
+      }
+      if(link.id[2]===id.toString()){
+        link.x2 = d3.event.x
+        link.y2 = d3.event.y
+      }
+    })
+
+    update()
+  }
+
+
+  function dragNodeEnded(id) {
     const shouldTrashNode = d3.event.x > 75 && d3.event.x < 75+50 && d3.event.y > 100 && d3.event.y < 100+50
 
-    if(!shouldTrashNode) {
+    if(shouldTrashNode) {
+      index = nodes.findIndex(n => n.id===id)
+      nodes.splice(index, 1)
 
-      d3.selectAll('circle')
-        .each(function(d) {
-          const x1 = d3.select(this).attr('cx')
-          const y1 = d3.select(this).attr('cy')
+      nodes.forEach(function(node) {
+        if(node.id>id)
+          node.id -= 1
+      })
 
-          const distance = Math.sqrt(Math.pow(x1-d3.event.x, 2) + Math.pow(y1-d3.event.y, 2))
+      links = links.filter(function(link) { 
+        return (link.id[0]!==id.toString() && link.id[2]!==id.toString())
+      })
 
-          const isLegendNode = x1==='100' && y1==='75'
-          if(!isLegendNode)
-            linksGroup.append('line')
-              .merge(linksGroup)
-                .attr('x1', function(d) { return x1 })
-                .attr('y1', function(d) { return y1 })
-                .attr('x2', function(d) { return d3.event.x })
-                .attr('y2', function(d) { return d3.event.y })
-                .attr('stroke-width', function(d) { return distance/100 })
-        })
+      links.forEach(function(link) {
+        let lower_id = parseInt(link.id[0])
+        let upper_id = parseInt(link.id[2])
+        if(lower_id>id)
+          lower_id-=1
+        if(upper_id>id)
+          upper_id-=1
+        link.id = lower_id + '-' + upper_id
+      })
 
-      nodesGroup.append('circle')
-      .merge(nodesGroup)
-        .attr('r', radius)
-        .attr('cx', d3.event.x)
-        .attr('cy', d3.event.y)
-        .call(d3.drag()
-          .on('drag', dragged)
-          .on('end', dragended))
-      
-
-      addLegendNode()
     }
-
+    update()
   }
-
 
   function drawLegend() {
     legend.append('svg:image')
@@ -103,8 +122,41 @@ const drawNodes = function(svg) {
 
     legend.selectAll('.legend-node')
       .call(d3.drag()
-        .on('drag', dragged)
-        .on('end', dragended))
+        .on('drag', draggedLegendNode)
+        .on('end', dragLegendNodeEnded))
+
+    function draggedLegendNode(d) {
+      d3.select(this)
+        .attr('cx', d3.event.x)
+        .attr('cy', d3.event.y)
+    }
+
+
+    function dragLegendNodeEnded(d) {
+      d3.select(this).remove()
+      const node_id = nodes.length
+      nodes.push({id: node_id, x: d3.event.x, y: d3.event.y})
+      nodesGroup.selectAll('circle')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('id', node_id)
+                .attr('r', radius)
+                .attr('cx', function(d) { return d.x; })
+                .attr('cy', function(d) { return d.y; })
+                .call(d3.drag()
+                  .on('drag', function() { dragNode(node_id) })
+                  .on('end', function() { dragNodeEnded(node_id) }))
+
+      nodes.forEach(function(node) {
+        if(node.id!=node_id) {
+          const link_id = node.id + '-' + node_id
+          links.push({id: link_id, x1: node.x, y1: node.y, x2: d3.event.x, y2: d3.event.y})
+        }
+      })
+
+      update()
+      addLegendNode()
+    }
   }
 }
 
