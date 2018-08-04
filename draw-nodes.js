@@ -1,6 +1,6 @@
 const radius = 20
 
-const computeWidth = function(x1, y1, x2, y2) {
+const computeLinkWidth = function(x1, y1, x2, y2) {
   const strokeScale = d3.scaleLinear()
                         .domain([0, Math.sqrt(960*960+600*600)])
                         .range([10, 0])
@@ -28,7 +28,6 @@ const drawNodes = function(svg) {
 
   drawLegend(svg)
 
-
   var update = function() {
     const newLinks = linksGroup.selectAll('line')
               .data(links)
@@ -41,7 +40,7 @@ const drawNodes = function(svg) {
               .attr('y1', function(d) { return d.y1 })
               .attr('x2', function(d) { return d.x2 })
               .attr('y2', function(d) { return d.y2 })
-              .attr('stroke-width', function(d) { return computeWidth(d.x1, d.y1, d.x2, d.y2) })
+              .attr('stroke-width', function(d) { return computeLinkWidth(d.x1, d.y1, d.x2, d.y2) })
 
     const newNodes = nodesGroup.selectAll('circle')
               .data(nodes)
@@ -59,6 +58,10 @@ const drawNodes = function(svg) {
     index = nodes.findIndex(n => n.id===id)
     nodes[index] = {id: id, x: d3.event.x, y: d3.event.y}
 
+    d3.select('.delete-icon')
+      .attr('x', nodes[index].x+5)
+      .attr('y', nodes[index].y-5)
+
     links.forEach(function(link) {
       if(link.id[0]===id.toString()){
         link.x1 = d3.event.x
@@ -73,40 +76,11 @@ const drawNodes = function(svg) {
     update()
   }
 
-
-  function dragNodeEnded(id) {
-    const shouldTrashNode = d3.event.x > 75 && d3.event.x < 75+50 && d3.event.y > 100 && d3.event.y < 100+50
-
-    if(shouldTrashNode) {
-      index = nodes.findIndex(n => n.id===id)
-      nodes.splice(index, 1)
-
-      nodes.forEach(function(node) {
-        if(node.id>id)
-          node.id -= 1
-      })
-
-      links = links.filter(function(link) { 
-        return (link.id[0]!==id.toString() && link.id[2]!==id.toString())
-      })
-
-      links.forEach(function(link) {
-        let lower_id = parseInt(link.id[0])
-        let upper_id = parseInt(link.id[2])
-        if(lower_id>id)
-          lower_id-=1
-        if(upper_id>id)
-          upper_id-=1
-        link.id = lower_id + '-' + upper_id
-      })
-
-    }
-    update()
-  }
-
-  function deleteNode(node) {
-    index = nodes.findIndex(n => n.id===node.id)
+  function removeNode(id) {
+    index = nodes.findIndex(n => n.id===id)
     nodes.splice(index, 1)
+
+    d3.select('.delete-icon').remove()
 
     nodes.forEach(function(node) {
       if(node.id>id)
@@ -129,16 +103,18 @@ const drawNodes = function(svg) {
     update()
   }
 
-  function offerDeleteNode(node) {
+  function handleMouseOver(node) {
     const selector = '[id="' + node.id + '"]'
     const circle = nodesGroup.select(selector)
 
-    nodesGroup.append('text')
-      .attr('class', 'delete-icon')
-      .attr('font-size', '10px')
-      .attr('x', node.x+5)
-      .attr('y', node.y-5)
-      .html('\u2715') 
+    if(d3.select('.delete-icon').empty())
+      nodesGroup.append('text')
+        .attr('class', 'delete-icon')
+        .attr('font-size', '10px')
+        .attr('x', node.x+5)
+        .attr('y', node.y-5)
+        .html('\u2715') 
+        .on('click', function() {removeNode(node.id)})
 
     function expandCircle() {
       circle.transition()
@@ -152,14 +128,28 @@ const drawNodes = function(svg) {
             .attr('r', radius)
             .on('end', expandCircle)
     }
+
     expandCircle()
   }
 
-  function resetNode(node) {
+  function isInsideCircle({cx, cy, r, x, y}) {
+    return Math.sqrt((cx-x)*(cx-x) + (cy-y)*(cy-y))<r
+  }
+
+  function handleMouseOut(node) {
+    if(isInsideCircle({
+        cx: node.x, 
+        cy: node.y, 
+        r: radius, 
+        x: d3.event.pageX, 
+        y: d3.event.pageY})) 
+      return
+
     d3.select('.delete-icon').remove()
 
     const selector = '[id="' + node.id + '"]'
     const circle = nodesGroup.select(selector)
+    console.log('mouseout')
 
     circle.transition()
           .duration(2000)
@@ -167,17 +157,6 @@ const drawNodes = function(svg) {
   }
 
   function drawLegend() {
-    function expandTrash() {
-      d3.select(this)
-        .attr('width', 60)
-        .attr('height', 60)
-    }
-    function shrinkTrash() {
-      d3.select(this)
-        .attr('width', 50)
-        .attr('height', 50)
-    }
-
     legend.append('rect')
       .attr('class', 'legend-box')
       .attr('x', 50)
@@ -219,10 +198,9 @@ const drawNodes = function(svg) {
                 .attr('cx', function(d) { return d.x; })
                 .attr('cy', function(d) { return d.y; })
                 .call(d3.drag()
-                  .on('drag', function() { dragNode(node_id) })
-                  .on('end', function() { dragNodeEnded(node_id) }))
-                .on('mouseover', function(d) { offerDeleteNode(d) })
-                .on('mouseout', resetNode)
+                  .on('drag', function() { dragNode(node_id) }))
+                .on('mouseover', handleMouseOver)
+                .on('mouseout', handleMouseOut)
 
       nodes.forEach(function(node) {
         if(node.id!=node_id) {
@@ -230,7 +208,6 @@ const drawNodes = function(svg) {
           links.push({id: link_id, x1: node.x, y1: node.y, x2: d3.event.x, y2: d3.event.y})
         }
       })
-
       update()
       addLegendNode()
     }
